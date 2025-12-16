@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mandalore Regional Explorer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background-color: #0a0a0f;
+            color: #88ccff;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+        
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            background: linear-gradient(180deg, #0a0e14 0%, #141a24 100%);
+        }
+        
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0a0f;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            transition: opacity 1s ease-out;
+        }
+        
+        .loading-text {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 18px;
+            color: #88ccff;
+            margin-top: 20px;
+            letter-spacing: 2px;
+        }
+        
+        .loading-bar {
+            width: 200px;
+            height: 4px;
+            background: #1c1c2d;
+            margin-top: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .loading-bar::before {
+            content: "";
+            position: absolute;
+            width: 40px;
+            height: 100%;
+            background: linear-gradient(90deg, rgba(136, 204, 255, 0) 0%, #88ccff 50%, rgba(136, 204, 255, 0) 100%);
+            animation: loading 1.5s infinite linear;
+        }
+        
+        @keyframes loading {
+            0% { transform: translateX(-40px); }
+            100% { transform: translateX(200px); }
+        }
+        
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(20, 26, 36, 0.95);
+            border-bottom: 2px solid #88ccff;
+            padding: 15px 30px;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 20px rgba(136, 204, 255, 0.5);
+        }
+        
+        .header h1 {
+            font-size: 1.8em;
+            text-shadow: 0 0 10px #88ccff;
+            margin: 0;
+            color: #88ccff;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        
+        .control-btn {
+            background: rgba(30, 50, 70, 0.8);
+            border: 2px solid #88ccff;
+            color: #88ccff;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: bold;
+            transition: all 0.3s;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .control-btn:hover {
+            background: rgba(136, 204, 255, 0.2);
+            color: #fff;
+            box-shadow: 0 0 15px rgba(136, 204, 255, 0.6);
+            transform: translateY(-2px);
+        }
+        
+        .main-content {
+            position: relative;
+            z-index: 10;
+            padding: 100px 30px 30px 30px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .intro-panel {
+            background: rgba(20, 26, 36, 0.95);
+            border: 2px solid #88ccff;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 0 30px rgba(136, 204, 255, 0.5);
+        }
+        
+        .intro-panel h2 {
+            color: #88ccff;
+            font-size: 2em;
+            margin-bottom: 15px;
+            text-shadow: 0 0 10px #88ccff;
+        }
+        
+        .intro-panel p {
+            color: #aaddff;
+            font-size: 1.1em;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        
+        .regions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .region-card {
+            background: rgba(20, 26, 36, 0.95);
+            border: 2px solid #88ccff;
+            border-radius: 10px;
+            padding: 25px;
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(136, 204, 255, 0.3);
+        }
+        
+        .region-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(136, 204, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .region-card:hover::before {
+            left: 100%;
+        }
+        
+        .region-card:hover {
+            transform: translateY(-10px);
+            border-color: #aaddff;
+            box-shadow: 0 10px 40px rgba(136, 204, 255, 0.6);
+        }
+        
+        .region-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .region-icon {
+            font-size: 3em;
+            filter: drop-shadow(0 0 10px currentColor);
+        }
+        
+        .region-title h3 {
+            color: #88ccff;
+            font-size: 1.6em;
+            margin-bottom: 5px;
+            text-shadow: 0 0 8px #88ccff;
+        }
+        
+        .region-type {
+            color: #66ddff;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .region-description {
+            color: #aaddff;
+            line-height: 1.5;
+            margin-bottom: 15px;
+            font-size: 1em;
+        }
+        
+        .location-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 15px;
+        }
+        
+        .location-tag {
+            background: rgba(136, 204, 255, 0.2);
+            border: 1px solid #88ccff;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            color: #88ccff;
+            transition: all 0.3s;
+        }
+        
+        .location-tag:hover {
+            background: rgba(136, 204, 255, 0.4);
+            transform: scale(1.05);
+        }
+        
+        .danger-level {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(136, 204, 255, 0.1);
+            border-left: 3px solid #88ccff;
+            border-radius: 5px;
+        }
+        
+        .danger-level.low {
+            background: rgba(0, 255, 136, 0.1);
+            border-left-color: #00ff88;
+        }
+        
+        .danger-level.medium {
+            background: rgba(255, 170, 0, 0.1);
+            border-left-color: #ffaa00;
+        }
+        
+        .danger-level.high {
+            background: rgba(255, 0, 85, 0.1);
+            border-left-color: #ff0055;
+        }
+        
+        .danger-level strong {
+            color: #88ccff;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 200;
+            overflow-y: auto;
+            padding: 80px 20px 20px 20px;
+        }
+        
+        .modal.show {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        
+        .modal-content {
+            background: rgba(20, 26, 36, 0.98);
+            border: 2px solid #88ccff;
+            border-radius: 15px;
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 0 50px rgba(136, 204, 255, 0.7);
+            position: relative;
+            animation: modalAppear 0.3s ease;
+        }
+        
+        @keyframes modalAppear {
+            0% { opacity: 0; transform: scale(0.9) translateY(-50px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255, 0, 85, 0.2);
+            border: 2px solid #ff0055;
+            color: #ff0055;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        
+        .modal-close:hover {
+            background: rgba(255, 0, 85, 0.4);
+            transform: rotate(90deg) scale(1.1);
+        }
+        
+        .modal-header {
+            margin-bottom: 25px;
+        }
+        
+        .modal-header h2 {
+            color: #88ccff;
+            font-size: 2.5em;
+            text-shadow: 0 0 15px #88ccff;
+            margin-bottom: 10px;
+        }
+        
+        .modal-section {
+            margin-bottom: 25px;
+        }
+        
+        .modal-section h3 {
+            color: #66ddff;
+            font-size: 1.4em;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        
+        .modal-section p, .modal-section li {
+            color: #aaddff;
+            line-height: 1.6;
+            font-size: 1.1em;
+        }
+        
+        .modal-section ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .modal-section li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+        
+        .modal-section li::before {
+            content: "▸";
+            position: absolute;
+            left: 0;
+            color: #88ccff;
+        }
+        
+        .scanline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow: hidden;
+            opacity: 0.1;
+            z-index: 150;
+            pointer-events: none;
+        }
+        
+        .scanline::before {
+            content: "";
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: rgba(136, 204, 255, 0.5);
+            animation: scanline 4s linear infinite;
+        }
+        
+        @keyframes scanline {
+            0% { top: 0%; }
+            100% { top: 100%; }
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.2em;
+            }
+            
+            .regions-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .modal-content {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="loading-text">Loading Mandalore Navigation...</div>
+        <div class="loading-bar"></div>
+    </div>
+
+    <div id="canvas-container"></div>
+    <div class="scanline"></div>
+    
+    <div class="header">
+        <h1>Mandalore Regional Explorer</h1>
+        <button class="control-btn" onclick="goBack()">← BACK</button>
+    </div>
+    
+    <div class="main-content">
+        <div class="intro-panel">
+            <h2>Welcome Traveler</h2>
+            <p>Mandalore - homeworld of the legendary Mandalorian warriors. Once a lush world, now scarred by ancient wars and transformed into barren desert dotted with domed cities.</p>
+            <p>Select a region below to explore the warrior culture and protected settlements of this proud warrior planet.</p>
+        </div>
+        
+        <div class="regions-grid" id="regionsGrid"></div>
+    </div>
+    
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <script>
+        const regions = [
+            {
+                name: "Sundari",
+                icon: "🏛️",
+                type: "Capital City",
+                danger: "medium",
+                description: "The gleaming capital enclosed in a massive protective dome. Center of Mandalorian government and the New Mandalorian pacifist movement.",
+                locations: ["Royal Palace", "Peace Park", "Government District", "Market Square", "Memorial Shrine"],
+                dangers: ["Political Tensions", "Death Watch Terrorists", "Corruption", "Black Market Activity"],
+                details: "Sundari represents the New Mandalorians' vision of peace. Duchess Satine leads from the Royal Palace, promoting pacifism despite the warrior traditions of her people. The city thrives under the dome's protection, with modern architecture and advanced technology. However, traditional warriors view this peaceful approach as weakness."
+            },
+            {
+                name: "Death Watch Camp",
+                icon: "⚔️",
+                type: "Terrorist Stronghold",
+                danger: "high",
+                description: "Hidden military encampment of Death Watch, traditionalist warriors who reject the pacifist New Mandalorians and seek to restore the warrior ways.",
+                locations: ["Training Grounds", "Weapons Cache", "Command Center", "Barracks", "Secret Entrances"],
+                dangers: ["Armed Warriors", "Explosive Training", "Hostile Territory", "Capture Risk", "Execution"],
+                details: "Death Watch operates from secret bases across Mandalore's wastelands. Led by Pre Vizsla, they train constantly in combat, maintaining the ancient warrior traditions. They view the pacifist government as traitors to Mandalorian culture. Their goal: overthrow Duchess Satine and return Mandalore to its warrior roots through any means necessary."
+            },
+            {
+                name: "Concordia",
+                icon: "🌙",
+                type: "Agricultural Moon",
+                danger: "high",
+                description: "Mandalore's moon, officially peaceful farmland but secretly harboring Death Watch mining operations and training facilities.",
+                locations: ["Mining Facilities", "Farm Settlements", "Secret Bases", "Abandoned Tunnels", "Landing Platforms"],
+                dangers: ["Death Watch Presence", "Mine Explosions", "Ambushes", "Political Assassinations"],
+                details: "Concordia appears as peaceful farmland, growing food for Mandalore's domed cities. Beneath this facade, abandoned mines hide Death Watch operations. Pre Vizsla serves as governor, using his position to coordinate terrorist activities while maintaining a respectable public image. The moon's isolation makes it perfect for covert operations."
+            },
+            {
+                name: "Keldabe",
+                icon: "🏰",
+                type: "Ancient Capital",
+                danger: "medium",
+                description: "The old warrior capital, now a monument to Mandalore's martial past. Preserved as a historical site under the dome.",
+                locations: ["Warrior Statues", "Old Armory", "Training Yards", "Memorial Wall", "Ancient Throne Room"],
+                dangers: ["Structural Decay", "Traditionalist Gatherings", "Historical Artifacts Theft"],
+                details: "Keldabe once ruled as Mandalore's capital when warriors dominated the planet. Massive statues of legendary warriors line the streets. The old throne room remains preserved, a reminder of past glories. Many traditionalists visit to pay respects to their ancestors, sometimes gathering in secret to discuss restoring the old ways."
+            },
+            {
+                name: "White Sands",
+                icon: "🏜️",
+                type: "Desert Wasteland",
+                danger: "high",
+                description: "Vast desert created by ancient wars. Toxic atmosphere requires protective equipment. Contains ruins of pre-war civilization.",
+                locations: ["Ancient Ruins", "Bombed Cities", "Crashed Ships", "Nomad Camps", "Radiation Zones"],
+                dangers: ["Toxic Air", "Radiation", "Sandstorms", "Extreme Temperatures", "Hostile Nomads"],
+                details: "The White Sands serve as stark reminder of Mandalore's self-destructive past. Ancient wars turned lush forests into poisonous desert. Ruined cities jut from sand dunes, their inhabitants long dead. Nomadic clans survive here, some hostile to outsiders. Without protective gear, death comes quickly from the toxic atmosphere."
+            },
+            {
+                name: "Kyrimorut",
+                icon: "🏕️",
+                type: "Hidden Settlement",
+                danger: "low",
+                description: "Secret village where traditional Mandalorians live away from both pacifists and extremists, maintaining balanced warrior traditions.",
+                locations: ["Village Center", "Training Grounds", "Forge", "Family Compounds", "Hidden Entrances"],
+                dangers: ["Discovery Risk", "Defensive Warriors", "Strict Entry Protocols"],
+                details: "Kyrimorut exists off official maps, home to Mandalorians who reject both extreme pacifism and Death Watch terrorism. They train in combat arts while living peacefully, honoring warrior traditions without seeking conquest. Families raise children in the old ways, teaching honor, loyalty, and combat skills. They welcome allies but defend their isolation fiercely."
+            },
+            {
+                name: "Mandalore Spaceport",
+                icon: "🚀",
+                type: "Trade Hub",
+                danger: "medium",
+                description: "Main spaceport connecting Mandalore to the galaxy. Heavily secured but target for smugglers and terrorists.",
+                locations: ["Landing Bays", "Customs Station", "Cargo Warehouses", "Security Headquarters", "Cantinas"],
+                dangers: ["Smuggling Operations", "Terrorist Attacks", "Contraband Screening", "Criminal Networks"],
+                details: "The spaceport handles all legitimate traffic to Mandalore. Security screens for weapons, as the pacifist government bans most armaments. Smugglers attempt to bypass these checks, selling illegal weapons to Death Watch sympathizers. The cantinas host shady deals and information brokers. Despite heavy security presence, the port remains vulnerable to attack."
+            },
+            {
+                name: "Mines of Mandalore",
+                icon: "⛏️",
+                type: "Resource Extraction",
+                danger: "high",
+                description: "Deep underground mines extracting beskar and other valuable ores. Dangerous work environment with minimal safety regulations.",
+                locations: ["Beskar Veins", "Mine Shafts", "Processing Plants", "Worker Barracks", "Equipment Depots"],
+                dangers: ["Cave-ins", "Equipment Failures", "Toxic Gas", "Labor Disputes", "Black Market Mining"],
+                details: "Mandalore's wealth comes from its mines, particularly beskar iron deposits. Miners work in harsh conditions, extracting ore that becomes legendary Mandalorian armor. The pacifist government tries to regulate mining, but corruption allows unsafe practices. Death Watch operatives sometimes raid mines for beskar. Cave-ins and gas leaks claim lives regularly."
+            }
+        ];
+
+        function initPage() {
+            const grid = document.getElementById('regionsGrid');
+            
+            regions.forEach(region => {
+                const card = document.createElement('div');
+                card.className = 'region-card';
+                card.onclick = () => showRegionDetails(region);
+                
+                let dangerColor = '#88ccff';
+                if (region.danger === 'low') dangerColor = '#00ff88';
+                if (region.danger === 'medium') dangerColor = '#ffaa00';
+                if (region.danger === 'high') dangerColor = '#ff0055';
+                
+                card.innerHTML = `
+                    <div class="region-header">
+                        <div class="region-icon" style="color: ${dangerColor}">${region.icon}</div>
+                        <div class="region-title">
+                            <h3>${region.name}</h3>
+                            <div class="region-type">${region.type}</div>
+                        </div>
+                    </div>
+                    <div class="region-description">${region.description}</div>
+                    <div class="location-tags">
+                        ${region.locations.slice(0, 3).map(loc => `<div class="location-tag">${loc}</div>`).join('')}
+                        ${region.locations.length > 3 ? `<div class="location-tag">+${region.locations.length - 3} more</div>` : ''}
+                    </div>
+                    <div class="danger-level ${region.danger}">
+                        <strong>Threat Level: ${region.danger.toUpperCase()}</strong>
+                    </div>
+                `;
+                
+                grid.appendChild(card);
+            });
+        }
+
+        function showRegionDetails(region) {
+            const modal = document.getElementById('modal');
+            const modalBody = document.getElementById('modalBody');
+            
+            modalBody.innerHTML = `
+                <div class="modal-header">
+                    <h2>${region.name}</h2>
+                    <div class="region-type" style="font-size: 1.2em;">${region.icon} ${region.type}</div>
+                </div>
+                
+                <div class="modal-section">
+                    <h3>Overview</h3>
+                    <p>${region.details}</p>
+                </div>
+                
+                <div class="modal-section">
+                    <h3>Notable Locations</h3>
+                    <ul>
+                        ${region.locations.map(loc => `<li>${loc}</li>`).join('')}
+                    </ul>
+                </div>
+                
+                <div class="modal-section">
+                    <h3>Known Dangers</h3>
+                    <ul>
+                        ${region.dangers.map(danger => `<li>${danger}</li>`).join('')}
+                    </ul>
+                </div>
+                
+                <div class="danger-level ${region.danger}">
+                    <strong>Threat Level: ${region.danger.toUpperCase()}</strong>
+                </div>
+            `;
+            
+            modal.classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('show');
+        }
+
+        function goBack() {
+            window.history.back();
+        }
+
+        window.addEventListener("load", function() {
+            setTimeout(() => {
+                document.getElementById("loading").style.opacity = "0";
+                setTimeout(() => {
+                    document.getElementById("loading").style.display = "none";
+                }, 1000);
+            }, 1500);
+        });
+
+        const container = document.getElementById("canvas-container");
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 5;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0x223344, 0.6);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0x88ccff, 1);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
+
+        const pointLight1 = new THREE.PointLight(0x6699ff, 1, 10);
+        pointLight1.position.set(-2, 1, 3);
+        scene.add(pointLight1);
+
+        const pointLight2 = new THREE.PointLight(0xaaddff, 1, 10);
+        pointLight2.position.set(2, -1, 3);
+        scene.add(pointLight2);
+
+        const particleCount = 850;
+        const particles = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+
+        for (let i = 0; i < particleCount; i++) {
+            positions[i * 3] = (Math.random() - 0.5) * 20;
+            positions[i * 3 + 1] = (Math.random() - 0.5) * 20;
+            positions[i * 3 + 2] = (Math.random() - 0.5) * 20;
+        }
+
+        particles.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+
+        const particleMaterial = new THREE.PointsMaterial({
+            color: 0x88ccff,
+            size: 0.09,
+            transparent: true,
+            blending: THREE.AdditiveBlending
+        });
+
+        const particleSystem = new THREE.Points(particles, particleMaterial);
+        scene.add(particleSystem);
+
+        const gridHelper = new THREE.GridHelper(20, 20, 0x6699ff, 0xaaddff);
+        gridHelper.position.y = -3;
+        gridHelper.material.transparent = true;
+        gridHelper.material.opacity = 0.2;
+        scene.add(gridHelper);
+
+        window.addEventListener("resize", function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        let mouseX = 0;
+        let mouseY = 0;
+
+        window.addEventListener("mousemove", function(event) {
+            mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+            mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const positions = particleSystem.geometry.attributes.position.array;
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3 + 2] += 0.007;
+                if (positions[i * 3 + 2] > 10) {
+                    positions[i * 3 + 2] = -10;
+                }
+            }
+            particleSystem.geometry.attributes.position.needsUpdate = true;
+
+            camera.position.x += (mouseX * 0.2 - camera.position.x) * 0.03;
+            camera.position.y += (mouseY * 0.2 - camera.position.y) * 0.03;
+            camera.lookAt(scene.position);
+
+            gridHelper.rotation.y += 0.0008;
+
+            pointLight1.position.x = Math.sin(Date.now() * 0.0012) * 3;
+            pointLight1.position.z = Math.cos(Date.now() * 0.0012) * 3;
+            
+            pointLight2.position.x = Math.cos(Date.now() * 0.0017) * 3;
+            pointLight2.position.z = Math.sin(Date.now() * 0.0017) * 3;
+
+            renderer.render(scene, camera);
+        }
+        animate();
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+        
+        document.getElementById('modal').addEventListener('click', (e) => {
+            if (e.target.id === 'modal') {
+                closeModal();
+            }
+        });
+        
+        initPage();
+    </script>
+</body>
+</html>

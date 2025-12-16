@@ -141,10 +141,37 @@
                 opacity: 1;
             }
         }
+
+        .skip-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(136, 204, 255, 0.2);
+            border: 2px solid #88ccff;
+            color: #88ccff;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: bold;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            z-index: 1000;
+            transition: all 0.3s;
+        }
+
+        .skip-btn:hover {
+            background: rgba(136, 204, 255, 0.4);
+            box-shadow: 0 0 20px rgba(136, 204, 255, 0.6);
+            transform: scale(1.05);
+        }
     </style>
 </head>
 <body>
     <div class="stars" id="stars"></div>
+
+    <button class="skip-btn" onclick="skipIntro()">SKIP INTRO</button>
 
     <article class="starwars">
         <audio autoplay>
@@ -298,6 +325,11 @@
         }
 
         createStars();
+
+        // Skip intro function
+        function skipIntro() {
+            window.location.href = 'galaxysystem.html';
+        }
 
         // Auto-redirect to galaxysystem.html after intro completes (62 seconds total)
         setTimeout(function() {

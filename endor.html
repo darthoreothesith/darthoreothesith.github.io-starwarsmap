@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Endor Regional Explorer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background-color: #0a0a0f;
+            color: #66ff88;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+        
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            background: linear-gradient(180deg, #0a1408 0%, #0f1f0a 100%);
+        }
+        
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0a0f;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            transition: opacity 1s ease-out;
+        }
+        
+        .loading-text {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 18px;
+            color: #66ff88;
+            margin-top: 20px;
+            letter-spacing: 2px;
+        }
+        
+        .loading-bar {
+            width: 200px;
+            height: 4px;
+            background: #1c1c2d;
+            margin-top: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .loading-bar::before {
+            content: "";
+            position: absolute;
+            width: 40px;
+            height: 100%;
+            background: linear-gradient(90deg, rgba(102, 255, 136, 0) 0%, #66ff88 50%, rgba(102, 255, 136, 0) 100%);
+            animation: loading 1.5s infinite linear;
+        }
+        
+        @keyframes loading {
+            0% { transform: translateX(-40px); }
+            100% { transform: translateX(200px); }
+        }
+        
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(15, 31, 10, 0.95);
+            border-bottom: 2px solid #66ff88;
+            padding: 15px 30px;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 20px rgba(102, 255, 136, 0.5);
+        }
+        
+        .header h1 {
+            font-size: 1.8em;
+            text-shadow: 0 0 10px #66ff88;
+            margin: 0;
+            color: #66ff88;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        
+        .control-btn {
+            background: rgba(20, 50, 20, 0.8);
+            border: 2px solid #66ff88;
+            color: #66ff88;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: bold;
+            transition: all 0.3s;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .control-btn:hover {
+            background: rgba(102, 255, 136, 0.2);
+            color: #fff;
+            box-shadow: 0 0 15px rgba(102, 255, 136, 0.6);
+            transform: translateY(-2px);
+        }
+        
+        .main-content {
+            position: relative;
+            z-index: 10;
+            padding: 100px 30px 30px 30px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .intro-panel {
+            background: rgba(15, 31, 10, 0.95);
+            border: 2px solid #66ff88;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 0 30px rgba(102, 255, 136, 0.5);
+        }
+        
+        .intro-panel h2 {
+            color: #66ff88;
+            font-size: 2em;
+            margin-bottom: 15px;
+            text-shadow: 0 0 10px #66ff88;
+        }
+        
+        .intro-panel p {
+            color: #99ffaa;
+            font-size: 1.1em;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        
+        .regions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .region-card {
+            background: rgba(15, 31, 10, 0.95);
+            border: 2px solid #66ff88;
+            border-radius: 10px;
+            padding: 25px;
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(102, 255, 136, 0.3);
+        }
+        
+        .region-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(102, 255, 136, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .region-card:hover::before {
+            left: 100%;
+        }
+        
+        .region-card:hover {
+            transform: translateY(-10px);
+            border-color: #88ffaa;
+            box-shadow: 0 10px 40px rgba(102, 255, 136, 0.6);
+        }
+        
+        .region-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .region-icon {
+            font-size: 3em;
+            filter: drop-shadow(0 0 10px currentColor);
+        }
+        
+        .region-title h3 {
+            color: #66ff88;
+            font-size: 1.6em;
+            margin-bottom: 5px;
+            text-shadow: 0 0 8px #66ff88;
+        }
+        
+        .region-type {
+            color: #88ddff;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .region-description {
+            color: #99ffaa;
+            line-height: 1.5;
+            margin-bottom: 15px;
+            font-size: 1em;
+        }
+        
+        .location-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 15px;
+        }
+        
+        .location-tag {
+            background: rgba(102, 255, 136, 0.2);
+            border: 1px solid #66ff88;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            color: #66ff88;
+            transition: all 0.3s;
+        }
+        
+        .location-tag:hover {
+            background: rgba(102, 255, 136, 0.4);
+            transform: scale(1.05);
+        }
+        
+        .danger-level {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(102, 255, 136, 0.1);
+            border-left: 3px solid #66ff88;
+            border-radius: 5px;
+        }
+        
+        .danger-level.peaceful {
+            background: rgba(102, 255, 136, 0.1);
+            border-left-color: #66ff88;
+        }
+        
+        .danger-level.low {
+            background: rgba(136, 221, 255, 0.1);
+            border-left-color: #88ddff;
+        }
+        
+        .danger-level.medium {
+            background: rgba(255, 170, 0, 0.1);
+            border-left-color: #ffaa00;
+        }
+        
+        .danger-level.high {
+            background: rgba(255, 68, 68, 0.1);
+            border-left-color: #ff4444;
+        }
+        
+        .danger-level strong {
+            color: #66ff88;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 200;
+            overflow-y: auto;
+            padding: 80px 20px 20px 20px;
+        }
+        
+        .modal.show {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        
+        .modal-content {
+            background: rgba(15, 31, 10, 0.98);
+            border: 2px solid #66ff88;
+            border-radius: 15px;
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 0 50px rgba(102, 255, 136, 0.7);
+            position: relative;
+            animation: modalAppear 0.3s ease;
+        }
+        
+        @keyframes modalAppear {
+            0% { opacity: 0; transform: scale(0.9) translateY(-50px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255, 170, 0, 0.2);
+            border: 2px solid #ffaa00;
+            color: #ffaa00;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        
+        .modal-close:hover {
+            background: rgba(255, 170, 0, 0.4);
+            transform: rotate(90deg) scale(1.1);
+        }
+        
+        .modal-header {
+            margin-bottom: 25px;
+        }
+        
+        .modal-header h2 {
+            color: #66ff88;
+            font-size: 2.5em;
+            text-shadow: 0 0 15px #66ff88;
+            margin-bottom: 10px;
+        }
+        
+        .modal-section {
+            margin-bottom: 25px;
+        }
+        
+        .modal-section h3 {
+            color: #88ddff;
+            font-size: 1.4em;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        
+        .modal-section p, .modal-section li {
+            color: #99ffaa;
+            line-height: 1.6;
+            font-size: 1.1em;
+        }
+        
+        .modal-section ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .modal-section li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+        
+        .modal-section li::before {
+            content: "▸";
+            position: absolute;
+            left: 0;
+            color: #66ff88;
+        }
+        
+        .scanline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow: hidden;
+            opacity: 0.1;
+            z-index: 150;
+            pointer-events: none;
+        }
+        
+        .scanline::before {
+            content: "";
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: rgba(102, 255, 136, 0.5);
+            animation: scanline 4s linear infinite;
+        }
+        
+        @keyframes scanline {
+            0% { top: 0%; }
+            100% { top: 100%; }
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.2em;
+            }
+            
+            .regions-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .modal-content {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="loading-text">Loading Endor Navigation...</div>
+        <div class="loading-bar"></div>
+    </div>
+
+    <div id="canvas-container"></div>
+    <div class="scanline"></div>
+    
+    <div class="header">
+        <h1>Endor Regional Explorer</h1>
+        <button class="control-btn" onclick="goBack()">← BACK</button>
+    </div>
+    
+    <div class="main-content">
+        <div class="intro-panel">
+            <h2>Welcome Traveler</h2>
+            <p>Endor - a forest moon orbiting a gas giant. Covered in towering trees and lush vegetation, home to the primitive but resourceful Ewok species. Site of the decisive Battle of Endor.</p>
+            <p>Select a region below to explore the dense forests and hidden settlements of this verdant moon.</p>
+        </div>
+        
+        <div class="regions-grid" id="regionsGrid"></div>
+    </div>
+    
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <script>
+        const regions = [
+            {
+                name: "Bright Tree Village",
+                icon: "🏡",
+                type: "Ewok Settlement",
+                danger: "peaceful",
+                description: "The main Ewok village built high in the ancient trees. Home to Chief Chirpa and the tribe that aided the Rebel Alliance during the Battle of Endor.",
+                locations: ["Chief's Hut", "Council Platform", "Tree Bridges", "Storage Huts", "Gathering Hall"],
+                dangers: ["High Altitude Falls", "Territorial Ewoks", "Primitive Traps"],
+                details: "Bright Tree Village sits dozens of meters above the forest floor, connected by rope bridges and platforms. Ewoks live in harmony with nature, hunting and gathering while maintaining their primitive but effective society. They initially captured the Rebels but became crucial allies against the Empire. The village celebrates with feasts and music, drums echoing through the forest."
+            },
+            {
+                name: "Imperial Landing Platform",
+                icon: "🏭",
+                type: "Military Installation",
+                danger: "high",
+                description: "Massive Imperial construction site where AT-ST walkers and troops secured the shield generator. Now abandoned ruins overtaken by forest.",
+                locations: ["Landing Pads", "Troop Barracks", "Command Center", "Vehicle Depot", "Bunker Entrance"],
+                dangers: ["Unstable Structures", "Unexploded Ordinance", "Dangerous Wildlife", "Rebel Scavengers"],
+                details: "The Empire cleared huge swaths of forest to build this facility. Massive landing platforms once received shuttles from the Death Star construction. AT-ST walkers patrolled the perimeter while scout troopers sped through the woods on speeder bikes. After the Empire's defeat, nature rapidly reclaims the site, vines covering Imperial machinery."
+            },
+            {
+                name: "Shield Generator Bunker",
+                icon: "⚡",
+                type: "Strategic Target",
+                danger: "medium",
+                description: "The critical Imperial facility projecting a defensive shield around the second Death Star. Site of the crucial Rebel ground assault.",
+                locations: ["Main Reactor", "Control Room", "Blast Doors", "Power Conduits", "Security Station"],
+                dangers: ["Imperial Defenses", "Heavy Weapons", "Explosives Risk", "Elite Guards"],
+                details: "This bunker housed the generator protecting the Death Star during construction. Disguised to blend with the forest, it was heavily fortified with blast doors and guard stations. Han Solo's strike team infiltrated with Ewok help, ultimately destroying the generator. The explosion marked a turning point in galactic history, allowing the fleet to destroy the Death Star."
+            },
+            {
+                name: "Ancient Grove",
+                icon: "🌳",
+                type: "Sacred Forest",
+                danger: "low",
+                description: "Oldest section of forest where trees have grown for thousands of years. Ewoks consider this area sacred and hold ceremonies here.",
+                locations: ["Elder Trees", "Spirit Stones", "Ceremonial Clearing", "Sacred Pool", "Ancient Carvings"],
+                dangers: ["Getting Lost", "Spiritual Taboos", "Dense Undergrowth"],
+                details: "Trees in the Ancient Grove dwarf even the massive specimens elsewhere on Endor. Some trunks measure dozens of meters in diameter, their canopies blocking out sunlight. Ewok shamans perform rituals here, believing the forest spirits are strongest in this place. Carved totems mark sacred boundaries. The air feels different here—heavier, older, alive with history."
+            },
+            {
+                name: "Speeder Bike Chase Route",
+                icon: "🏍️",
+                type: "Forest Trails",
+                danger: "medium",
+                description: "Winding paths through massive trees where Luke and Leia pursued Imperial scouts on speeder bikes in a high-speed chase.",
+                locations: ["Fallen Log Bridge", "Narrow Passages", "Crash Sites", "Scout Checkpoints", "Hidden Trails"],
+                dangers: ["Fallen Trees", "Rapid Wildlife", "Difficult Terrain", "Sharp Turns"],
+                details: "Imperial scouts knew these trails well, racing through at deadly speeds. Trees blur past at 500 kilometers per hour, requiring split-second reflexes to avoid collisions. Several scouts died crashing into trees during the pursuit. Crashed speeders still rust in the undergrowth. Ewoks now use these paths for hunting, though at considerably slower speeds."
+            },
+            {
+                name: "Lake of Sorrows",
+                icon: "🏞️",
+                type: "Freshwater Lake",
+                danger: "low",
+                description: "Large lake fed by mountain streams. Rich with fish and surrounded by meadows where herbivores graze. Peaceful despite its ominous name.",
+                locations: ["Fishing Spots", "Sandy Beaches", "Ewok Camps", "Reed Beds", "Waterfall"],
+                dangers: ["Deep Water", "Territorial Animals", "Slippery Rocks"],
+                details: "The lake got its name from Ewok legend, not actual danger. Crystal-clear water reflects the forest canopy, creating breathtaking views. Fish are abundant, making it a popular fishing spot for Ewok tribes. Deer-like creatures drink at the shore while birds hunt insects over the surface. During summer, Ewoks hold festivals on the beaches, celebrating the season's bounty."
+            },
+            {
+                name: "Death Star Debris Field",
+                icon: "💥",
+                type: "Wreckage Zone",
+                danger: "high",
+                description: "Area where debris from the destroyed Death Star impacted the forest moon. Massive craters and burning wreckage create hazardous conditions.",
+                locations: ["Impact Craters", "Burning Wreckage", "Radiation Zones", "Scattered Technology", "Observation Posts"],
+                dangers: ["Radiation", "Fires", "Unstable Ground", "Toxic Materials", "Scavenger Conflicts"],
+                details: "When the Death Star exploded, chunks of debris rained down on Endor. Some pieces were massive, creating kilometer-wide impact craters. Fires still burn in places, fueled by reactor cores. Scavengers risk radiation exposure searching for valuable Imperial technology. The New Republic cordoned off the worst zones, but enforcement is difficult in such remote wilderness."
+            },
+            {
+                name: "Gorax Territory",
+                icon: "👹",
+                type: "Danger Zone",
+                danger: "high",
+                description: "Remote mountain region inhabited by Gorax—massive, primitive giants who occasionally raid Ewok villages for prey.",
+                locations: ["Mountain Caves", "Gorax Dens", "Bone Yards", "Rocky Outcrops", "Abandoned Villages"],
+                dangers: ["Gorax Giants", "Steep Cliffs", "Landslides", "Predatory Wildlife", "Extreme Isolation"],
+                details: "Gorax stand over 30 meters tall, primitive but intelligent enough to craft crude tools and weapons. They live in mountain caves, venturing down to hunt when hungry. Ewoks fear them deeply, having lost entire hunting parties to these giants. The ground shakes when Gorax approach. Ancient Ewok legends speak of heroes who defeated Gorax, but few modern warriors dare challenge them."
+            }
+        ];
+
+        function initPage() {
+            const grid = document.getElementById('regionsGrid');
+            
+            regions.forEach(region => {
+                const card = document.createElement('div');
+                card.className = 'region-card';
+                card.onclick = () => showRegionDetails(region);
+                
+                let dangerColor = '#66ff88';
+                if (region.danger === 'peaceful') dangerColor = '#66ff88';
+                if (region.danger === 'low') dangerColor = '#88ddff';
+                if (region.danger === 'medium') dangerColor = '#ffaa00';
+                if (region.danger === 'high') dangerColor = '#ff4444';
+                
+                card.innerHTML = `
+                    <div class="region-header">
+                        <div class="region-icon" style="color: ${dangerColor}">${region.icon}</div>
+                        <div class="region-title">
+                            <h3>${region.name}</h3>
+                            <div class="region-type">${region.type}</div>
+                        </div>
+                    </div>
+                    <div class="region-description">${region.description}</div>
+                    <div class="location-tags">
+                        ${region.locations.slice(0, 3).map(loc => `<div class="location-tag">${loc}</div>`).join('')}
+                        ${region.locations.length > 3 ? `<div class="location-tag">+${region.locations.length - 3} more</div>` : ''}
+                    </div>
+                    <div class="danger-level ${region.danger}">
+                        <strong>Status: ${region.danger.toUpperCase()}</strong>
+                    </div>
+                `;
+                
+                grid.appendChild(card);
+            });
+        }
+
+        function showRegionDetails(region) {
+            const modal = document.getElementById('modal');
+            const modalBody = document.getElementById('modalBody');
+            
+            modalBody.innerHTML = `
+                <div class="modal-header">
+                    <h2>${region.name}</h2>
+                    <div class="region-type" style="font-size: 1.2em;">${region.icon} ${region.type}</div>
+                </div>
+                
+                <div class="modal-section">
+                    <h3>Overview</h3>
+                    <p>${region.details}</p>
+                </div>
+                
+                <div class="modal-section">
+                    <h3>Notable Locations</h3>
+                    <ul>
+                        ${region.locations.map(loc => `<li>${loc}</li>`).join('')}
+                    </ul>
+                </div>
+                
+                <div class="modal-section">
+                    <h3>Known Dangers</h3>
+                    <ul>
+                        ${region.dangers.map(danger => `<li>${danger}</li>`).join('')}
+                    </ul>
+                </div>
+                
+                <div class="danger-level ${region.danger}">
+                    <strong>Status: ${region.danger.toUpperCase()}</strong>
+                </div>
+            `;
+            
+            modal.classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('show');
+        }
+
+        function goBack() {
+            window.history.back();
+        }
+
+        window.addEventListener("load", function() {
+            setTimeout(() => {
+                document.getElementById("loading").style.opacity = "0";
+                setTimeout(() => {
+                    document.getElementById("loading").style.display = "none";
+                }, 1000);
+            }, 1500);
+        });
+
+        const container = document.getElementById("canvas-container");
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 5;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0x224422, 0.7);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0x66ff88, 0.9);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
+
+        const pointLight1 = new THREE.PointLight(0x44ff66, 0.9, 10);
+        pointLight1.position.set(-2, 1, 3);
+        scene.add(pointLight1);
+
+        const pointLight2 = new THREE.PointLight(0x88ffaa, 0.9, 10);
+        pointLight2.position.set(2, -1, 3);
+        scene.add(pointLight2);
+
+        const particleCount = 950;
+        const particles = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+
+        for (let i = 0; i < particleCount; i++) {
+            positions[i * 3] = (Math.random() - 0.5) * 20;
+            positions[i * 3 + 1] = (Math.random() - 0.5) * 20;
+            positions[i * 3 + 2] = (Math.random() - 0.5) * 20;
+        }
+
+        particles.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+
+        const particleMaterial = new THREE.PointsMaterial({
+            color: 0x66ff88,
+            size: 0.11,
+            transparent: true,
+            blending: THREE.AdditiveBlending
+        });
+
+        const particleSystem = new THREE.Points(particles, particleMaterial);
+        scene.add(particleSystem);
+
+        const gridHelper = new THREE.GridHelper(20, 20, 0x44ff66, 0x88ffaa);
+        gridHelper.position.y = -3;
+        gridHelper.material.transparent = true;
+        gridHelper.material.opacity = 0.18;
+        scene.add(gridHelper);
+
+        window.addEventListener("resize", function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        let mouseX = 0;
+        let mouseY = 0;
+
+        window.addEventListener("mousemove", function(event) {
+            mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+            mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const positions = particleSystem.geometry.attributes.position.array;
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3 + 1] -= 0.004;
+                if (positions[i * 3 + 1] < -10) {
+                    positions[i * 3 + 1] = 10;
+                }
+            }
+            particleSystem.geometry.attributes.position.needsUpdate = true;
+
+            camera.position.x += (mouseX * 0.2 - camera.position.x) * 0.03;
+            camera.position.y += (mouseY * 0.2 - camera.position.y) * 0.03;
+            camera.lookAt(scene.position);
+
+            gridHelper.rotation.y += 0.0006;
+
+            pointLight1.position.x = Math.sin(Date.now() * 0.0009) * 3;
+            pointLight1.position.z = Math.cos(Date.now() * 0.0009) * 3;
+            
+            pointLight2.position.x = Math.cos(Date.now() * 0.0014) * 3;
+            pointLight2.position.z = Math.sin(Date.now() * 0.0014) * 3;
+
+            renderer.render(scene, camera);
+        }
+        animate();
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+        
+        document.getElementById('modal').addEventListener('click', (e) => {
+            if (e.target.id === 'modal') {
+                closeModal();
+            }
+        });
+        
+        initPage();
+    </script>
+</body>
+</html>

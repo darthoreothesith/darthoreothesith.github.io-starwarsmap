@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bespin Regional Explorer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background-color: #0a0a0f;
+            color: #ff9944;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+        
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            background: linear-gradient(180deg, #1a0f08 0%, #2d1a0f 100%);
+        }
+        
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0a0f;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            transition: opacity 1s ease-out;
+        }
+        
+        .loading-text {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 18px;
+            color: #ff9944;
+            margin-top: 20px;
+            letter-spacing: 2px;
+        }
+        
+        .loading-bar {
+            width: 200px;
+            height: 4px;
+            background: #1c1c2d;
+            margin-top: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .loading-bar::before {
+            content: "";
+            position: absolute;
+            width: 40px;
+            height: 100%;
+            background: linear-gradient(90deg, rgba(255, 153, 68, 0) 0%, #ff9944 50%, rgba(255, 153, 68, 0) 100%);
+            animation: loading 1.5s infinite linear;
+        }
+        
+        @keyframes loading {
+            0% { transform: translateX(-40px); }
+            100% { transform: translateX(200px); }
+        }
+        
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(29, 26, 15, 0.95);
+            border-bottom: 2px solid #ff9944;
+            padding: 15px 30px;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 20px rgba(255, 153, 68, 0.5);
+        }
+        
+        .header h1 {
+            font-size: 1.8em;
+            text-shadow: 0 0 10px #ff9944;
+            margin: 0;
+            color: #ff9944;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        
+        .control-btn {
+            background: rgba(60, 30, 10, 0.8);
+            border: 2px solid #ff9944;
+            color: #ff9944;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: bold;
+            transition: all 0.3s;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .control-btn:hover {
+            background: rgba(255, 153, 68, 0.2);
+            color: #fff;
+            box-shadow: 0 0 15px rgba(255, 153, 68, 0.6);
+            transform: translateY(-2px);
+        }
+        
+        .main-content {
+            position: relative;
+            z-index: 10;
+            padding: 100px 30px 30px 30px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .intro-panel {
+            background: rgba(29, 26, 15, 0.95);
+            border: 2px solid #ff9944;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 0 30px rgba(255, 153, 68, 0.5);
+        }
+        
+        .intro-panel h2 {
+            color: #ff9944;
+            font-size: 2em;
+            margin-bottom: 15px;
+            text-shadow: 0 0 10px #ff9944;
+        }
+        
+        .intro-panel p {
+            color: #ffbb77;
+            font-size: 1.1em;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        
+        .regions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .region-card {
+            background: rgba(29, 26, 15, 0.95);
+            border: 2px solid #ff9944;
+            border-radius: 10px;
+            padding: 25px;
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(255, 153, 68, 0.3);
+        }
+        
+        .region-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 153, 68, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .region-card:hover::before {
+            left: 100%;
+        }
+        
+        .region-card:hover {
+            transform: translateY(-10px);
+            border-color: #ffbb77;
+            box-shadow: 0 10px 40px rgba(255, 153, 68, 0.6);
+        }
+        
+        .region-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .region-icon {
+            font-size: 3em;
+            filter: drop-shadow(0 0 10px currentColor);
+        }
+        
+        .region-title h3 {
+            color: #ff9944;
+            font-size: 1.6em;
+            margin-bottom: 5px;
+            text-shadow: 0 0 8px #ff9944;
+        }
+        
+        .region-type {
+            color: #66ccff;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .region-description {
+            color: #ffbb77;
+            line-height: 1.5;
+            margin-bottom: 15px;
+            font-size: 1em;
+        }
+        
+        .location-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 15px;
+        }
+        
+        .location-tag {
+            background: rgba(255, 153, 68, 0.2);
+            border: 1px solid #ff9944;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            color: #ff9944;
+            transition: all 0.3s;
+        }
+        
+        .location-tag:hover {
+            background: rgba(255, 153, 68, 0.4);
+            transform: scale(1.05);
+        }
+        
+        .danger-level {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(255, 170, 0, 0.1);
+            border-left: 3px solid #ffaa00;
+            border-radius: 5px;
+        }
+        
+        .danger-level.low {
+            background: rgba(0, 255, 136, 0.1);
+            border-left-color: #00ff88;
+        }
+        
+        .danger-level.medium {
+            background: rgba(255, 170, 0, 0.1);
+            border-left-color: #ffaa00;
+        }
+        
+        .danger-level.high {
+            background: rgba(255, 0, 85, 0.1);
+            border-left-color: #ff0055;
+        }
+        
+        .danger-level strong {
+            color: #ff9944;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 200;
+            overflow-y: auto;
+            padding: 80px 20px 20px 20px;
+        }
+        
+        .modal.show {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        
+        .modal-content {
+            background: rgba(29, 26, 15, 0.98);
+            border: 2px solid #ff9944;
+            border-radius: 15px;
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 0 50px rgba(255, 153, 68, 0.7);
+            position: relative;
+            animation: modalAppear 0.3s ease;
+        }
+        
+        @keyframes modalAppear {
+            0% { opacity: 0; transform: scale(0.9) translateY(-50px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255, 0, 85, 0.2);
+            border: 2px solid #ff0055;
+            color: #ff0055;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        
+        .modal-close:hover {
+            background: rgba(255, 0, 85, 0.4);
+            transform: rotate(90deg) scale(1.1);
+        }
+        
+        .modal-header {
+            margin-bottom: 25px;
+        }
+        
+        .modal-header h2 {
+            color: #ff9944;
+            font-size: 2.5em;
+            text-shadow: 0 0 15px #ff9944;
+            margin-bottom: 10px;
+        }
+        
+        .modal-section {
+            margin-bottom: 25px;
+        }
+        
+        .modal-section h3 {
+            color: #66ccff;
+            font-size: 1.4em;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        
+        .modal-section p, .modal-section li {
+            color: #ffbb77;
+            line-height: 1.6;
+            font-size: 1.1em;
+        }
+        
+        .modal-section ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .modal-section li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+        
+        .modal-section li::before {
+            content: "▸";
+            position: absolute;
+            left: 0;
+            color: #ff9944;
+        }
+        
+        .scanline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow: hidden;
+            opacity: 0.1;
+            z-index: 150;
+            pointer-events: none;
+        }
+        
+        .scanline::before {
+            content: "";
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: rgba(255, 153, 68, 0.5);
+            animation: scanline 4s linear infinite;
+        }
+        
+        @keyframes scanline {
+            0% { top: 0%; }
+            100% { top: 100%; }
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.2em;
+            }
+            
+            .regions-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .modal-content {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="loading-text">Loading Bespin Navigation...</div>
+        <div class="loading-bar"></div>
+    </div>
+
+    <div id="canvas-container"></div>
+    <div class="scanline"></div>
+    
+    <div class="header">
+        <h1>Bespin Regional Explorer</h1>
+        <button class="control-btn" onclick="goBack()">← BACK</button>
+    </div>
+    
+    <div class="main-content">
+        <div class="intro-panel">
+            <h2>Welcome Traveler</h2>
+            <p>Bespin - a gas giant in the Anoat sector, famous for Cloud City floating in the upper atmosphere. A center of tibanna gas mining and luxury tourism.</p>
+            <p>Select a region below to explore the floating facilities and atmospheric zones of this unique world.</p>
+        </div>
+        
+        <div class="regions-grid" id="regionsGrid"></div>
+    </div>
+    
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <script>
+        const regions = [
+            {
+                name: "Cloud City",
+                icon: "🏙️",
+                type: "Floating Metropolis",
+                danger: "medium",
+                description: "A massive tibanna gas mining colony floating 60,000 kilometers above Bespin's core. Home to luxury hotels, casinos, and industrial facilities.",
+                locations: ["Central Plaza", "Carbon Freezing Chamber", "East Platform", "West Gallery", "Mining Operations"],
+                dangers: ["Imperial Occupation", "Criminal Elements", "Atmospheric Instability", "High Stakes Gambling"],
+                details: "Cloud City is a marvel of engineering, suspended in the life zone of Bespin's atmosphere. Baron Administrator Lando Calrissian oversees operations, balancing mining profits with tourism revenue. The city features elegant architecture, world-class dining, and some of the galaxy's finest casinos. However, its strategic value makes it a target for Imperial interest."
+            },
+            {
+                name: "Port Town",
+                icon: "🚢",
+                type: "Docking District",
+                danger: "medium",
+                description: "The main arrival and departure hub of Cloud City, bustling with ships, cargo, and travelers from across the galaxy.",
+                locations: ["Landing Platform 327", "Customs Station", "Ship Repair Docks", "Cargo Loading Bays", "Immigration Office"],
+                dangers: ["Smugglers", "Contraband Checks", "Ship Thieves", "Scammers"],
+                details: "Port Town handles thousands of ships daily, from luxury yachts to cargo freighters. Customs officials attempt to screen for illegal goods, but smuggling remains common. The district is loud, chaotic, and filled with beings of every species. Mechanical droids maintain the landing platforms while human staff manage logistics."
+            },
+            {
+                name: "Tourist District",
+                icon: "🎰",
+                type: "Entertainment Zone",
+                danger: "low",
+                description: "Luxurious hotels, fine dining establishments, and entertainment venues catering to wealthy visitors seeking the famous 'Bespin Experience.'",
+                locations: ["Grand Hotel", "Pair O'Dice Casino", "Observation Lounges", "Gourmet Restaurants", "Shopping Promenades"],
+                dangers: ["Pickpockets", "Cheating at Cards", "Overpriced Services"],
+                details: "The Tourist District showcases Bespin at its finest. Floor-to-ceiling transparisteel windows offer breathtaking views of the endless clouds. Wealthy tourists gamble fortunes, dine on imported delicacies, and relax in opulent suites. Everything is designed to separate visitors from their credits in the most pleasant way possible."
+            },
+            {
+                name: "Industrial Sector",
+                icon: "⚙️",
+                type: "Mining Operations",
+                danger: "high",
+                description: "The working heart of Cloud City, where tibanna gas is extracted, refined, and processed for export throughout the galaxy.",
+                locations: ["Gas Refineries", "Processing Plants", "Worker Housing", "Equipment Storage", "Ventilation Systems"],
+                dangers: ["Toxic Gas Exposure", "Equipment Malfunctions", "Pressure Hazards", "Labor Disputes"],
+                details: "Miles of pipes, pumps, and processors work constantly to extract and refine tibanna gas. Workers endure difficult conditions for modest pay. The atmosphere is thick with chemical smells, and the noise of machinery never stops. Safety protocols exist but aren't always followed when production quotas must be met."
+            },
+            {
+                name: "Lower Levels",
+                icon: "⬇️",
+                type: "Underworld",
+                danger: "high",
+                description: "The less glamorous sections beneath the main city, home to workers, outcasts, and those who prefer to stay out of sight.",
+                locations: ["Worker Cantinas", "Maintenance Tunnels", "Black Market", "Fugitive Hideouts", "Emergency Shelters"],
+                dangers: ["Gang Activity", "No Security Presence", "Structural Damage", "Desperate Criminals"],
+                details: "Below the gleaming tourist levels, life is harder. Cramped quarters house mining workers and service staff. Cantinas serve cheap drinks, and the black market operates openly. Security rarely patrols here unless there's trouble that affects the upper levels. Those who don't fit in upstairs find refuge—or danger—in these shadows."
+            },
+            {
+                name: "Life Zone",
+                icon: "☁️",
+                type: "Atmospheric Layer",
+                danger: "medium",
+                description: "The breathable atmospheric layer where Cloud City floats, containing the perfect balance of pressure and temperature for human habitation.",
+                locations: ["Atmospheric Monitoring Stations", "Weather Balloons", "Research Platforms", "Beldon Herds", "Wind Farms"],
+                dangers: ["Sudden Weather Changes", "Atmospheric Creatures", "Equipment Failure", "Falling"],
+                details: "The Life Zone is a narrow band between Bespin's crushing depths and frozen upper atmosphere. Scientists monitor conditions constantly. Massive beldon creatures drift through the clouds, feeding on microscopic organisms. Small platforms study atmospheric phenomena and test experimental technologies. It's beautiful but unforgiving to the unprepared."
+            },
+            {
+                name: "Upper Atmosphere",
+                icon: "🌫️",
+                type: "High Altitude Zone",
+                danger: "high",
+                description: "The frigid upper layers of Bespin's atmosphere, where temperatures drop drastically and oxygen is scarce.",
+                locations: ["High Altitude Research", "Communication Arrays", "Emergency Beacons", "Abandoned Platforms", "Ice Crystal Fields"],
+                dangers: ["Extreme Cold", "Low Oxygen", "Ice Storms", "Equipment Freezing", "Isolation"],
+                details: "Few venture into the upper atmosphere except for scientific research or emergency repairs. Temperatures plummet, ice crystals form on exposed surfaces, and breathing equipment is essential. Abandoned mining platforms drift as ghostly reminders of failed ventures. The view is spectacular, but survival time without proper gear is measured in minutes."
+            },
+            {
+                name: "Deep Gas Mines",
+                icon: "💨",
+                type: "Extreme Depth Operations",
+                danger: "high",
+                description: "Experimental deep mining operations reaching far below the Life Zone, where pressure and heat increase dramatically.",
+                locations: ["Deep Mining Shafts", "Pressure-Resistant Labs", "Automated Extraction", "Emergency Pods", "Seismic Monitors"],
+                dangers: ["Crushing Pressure", "Extreme Heat", "Gas Explosions", "Equipment Failure", "Rescue Impossible"],
+                details: "Deep mining is incredibly dangerous but potentially lucrative. Automated systems handle most extraction, but human oversight is required. Workers rotate in short shifts due to psychological stress. The constant awareness that a single seal failure means instant death weighs heavily. Only the desperate or highly paid work here."
+            }
+        ];
+
+        function initPage() {
+            const grid = document.getElementById('regionsGrid');
+            
+            regions.forEach(region => {
+                const card = document.createElement('div');
+                card.className = 'region-card';
+                card.onclick = () => showRegionDetails(region);
+                
+                let dangerColor = '#ffaa00';
+                if (region.danger === 'low') dangerColor = '#00ff88';
+                if (region.danger === 'medium') dangerColor = '#ffaa00';
+                if (region.danger === 'high') dangerColor = '#ff0055';
+                
+                card.innerHTML = `
+                    <div class="region-header">
+                        <div class="region-icon" style="color: ${dangerColor}">${region.icon}</div>
+                        <div class="region-title">
+                            <h3>${region.name}</h3>
+                            <div class="region-type">${region.type}</div>
+                        </div>
+                    </div>
+                    <div class="region-description">${region.description}</div>
+                    <div class="location-tags">
+                        ${region.locations.slice(0, 3).map(loc => `<div class="location-tag">${loc}</div>`).join('')}
+                        ${region.locations.length > 3 ? `<div class="location-tag">+${region.locations.length - 3} more</div>` : ''}
+                    </div>
+                    <div class="danger-level ${region.danger}">
+                        <strong>Threat Level: ${region.danger.toUpperCase()}</strong>
+                    </div>
+                `;
+                
+                grid.appendChild(card);
+            });
+        }
+
+        function showRegionDetails(region) {
+            const modal = document.getElementById('modal');
+            const modalBody = document.getElementById('modalBody');
+            
+            modalBody.innerHTML = `
+                <div class="modal-header">
+                    <h2>${region.name}</h2>
+                    <div class="region-type" style="font-size: 1.2em;">${region.icon} ${region.type}</div>
+                </div>
+                
+                <div class="modal-section">
+                    <h3>Overview</h3>
+                    <p>${region.details}</p>
+                </div>
+                
+                <div class="modal-section">
+                    <h3>Notable Locations</h3>
+                    <ul>
+                        ${region.locations.map(loc => `<li>${loc}</li>`).join('')}
+                    </ul>
+                </div>
+                
+                <div class="modal-section">
+                    <h3>Known Dangers</h3>
+                    <ul>
+                        ${region.dangers.map(danger => `<li>${danger}</li>`).join('')}
+                    </ul>
+                </div>
+                
+                <div class="danger-level ${region.danger}">
+                    <strong>Threat Level: ${region.danger.toUpperCase()}</strong>
+                </div>
+            `;
+            
+            modal.classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('show');
+        }
+
+        function goBack() {
+            window.history.back();
+        }
+
+        window.addEventListener("load", function() {
+            setTimeout(() => {
+                document.getElementById("loading").style.opacity = "0";
+                setTimeout(() => {
+                    document.getElementById("loading").style.display = "none";
+                }, 1000);
+            }, 1500);
+        });
+
+        const container = document.getElementById("canvas-container");
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 5;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0x332211, 0.6);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xff9944, 0.9);
+        directionalLight.position.set(5, 5, 5);
+        scene.add(directionalLight);
+
+        const pointLight1 = new THREE.PointLight(0xff6622, 1, 10);
+        pointLight1.position.set(-2, 1, 3);
+        scene.add(pointLight1);
+
+        const pointLight2 = new THREE.PointLight(0xffbb44, 1, 10);
+        pointLight2.position.set(2, -1, 3);
+        scene.add(pointLight2);
+
+        const particleCount = 900;
+        const particles = new THREE.BufferGeometry();
+        const positions = new Float32Array(particleCount * 3);
+
+        for (let i = 0; i < particleCount; i++) {
+            positions[i * 3] = (Math.random() - 0.5) * 20;
+            positions[i * 3 + 1] = (Math.random() - 0.5) * 20;
+            positions[i * 3 + 2] = (Math.random() - 0.5) * 20;
+        }
+
+        particles.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+
+        const particleMaterial = new THREE.PointsMaterial({
+            color: 0xff9944,
+            size: 0.1,
+            transparent: true,
+            blending: THREE.AdditiveBlending
+        });
+
+        const particleSystem = new THREE.Points(particles, particleMaterial);
+        scene.add(particleSystem);
+
+        const gridHelper = new THREE.GridHelper(20, 20, 0xff6622, 0xffbb44);
+        gridHelper.position.y = -3;
+        gridHelper.material.transparent = true;
+        gridHelper.material.opacity = 0.15;
+        scene.add(gridHelper);
+
+        window.addEventListener("resize", function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        let mouseX = 0;
+        let mouseY = 0;
+
+        window.addEventListener("mousemove", function(event) {
+            mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+            mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const positions = particleSystem.geometry.attributes.position.array;
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3 + 1] += 0.006;
+                if (positions[i * 3 + 1] > 10) {
+                    positions[i * 3 + 1] = -10;
+                }
+            }
+            particleSystem.geometry.attributes.position.needsUpdate = true;
+
+            camera.position.x += (mouseX * 0.2 - camera.position.x) * 0.03;
+            camera.position.y += (mouseY * 0.2 - camera.position.y) * 0.03;
+            camera.lookAt(scene.position);
+
+            gridHelper.rotation.y += 0.0009;
+
+            pointLight1.position.x = Math.sin(Date.now() * 0.0011) * 3;
+            pointLight1.position.z = Math.cos(Date.now() * 0.0011) * 3;
+            
+            pointLight2.position.x = Math.cos(Date.now() * 0.0016) * 3;
+            pointLight2.position.z = Math.sin(Date.now() * 0.0016) * 3;
+
+            renderer.render(scene, camera);
+        }
+        animate();
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+        
+        document.getElementById('modal').addEventListener('click', (e) => {
+            if (e.target.id === 'modal') {
+                closeModal();
+            }
+        });
+        
+        initPage();
+    </script>
+</body>
+</html>
